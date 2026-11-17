@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  items     Item[]  
+  claims    Claim[] 
+  messages Message[]
+  notifications Notification[]
+ 
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  name      String?       //temp store
+  password  String?       //hashed password
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum ItemStatus {
+  OPEN
+  CLOSED
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        String   // "lost" or "found"
+  location    String
+  date        DateTime
+  imageUrl    String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  claims      Claim[]
+  status      ItemStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ClaimStatus {
+  pending
+  approved
+  rejected
+}
+
+model Claim {
+  id        String   @id @default(cuid())
+  message   String?
+  status ClaimStatus @default(pending)
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  chat Chat?
+  createdAt DateTime @default(now())
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  claimId   String   @unique
+  claim     Claim    @relation(fields: [claimId], references: [id])
+  createdAt DateTime @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+enum NotificationType {
+  claim_submitted
+  claim_approved
+  claim_rejected
+  new_message
+  item_closed
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  relatedItemId  String?
+  relatedClaimId String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
